@@ -1,0 +1,82 @@
+name: Deploy Frontend to VPS
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    name: Deploy to ${{ github.ref_name == 'main' && 'Production' || 'Development' }}
+    runs-on: ubuntu-latest
+    environment: ${{ github.ref_name == 'main' && 'production' || 'development' }}
+    
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Connect to Tailscale
+        uses: tailscale/github-action@v2
+        with:
+          authkey: ${{ secrets.TAILSCALE_AUTHKEY }}
+
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SERVER_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          
+          PORT=$(echo "${{ secrets.SERVER_PORT }}" | tr -dc '0-9')
+          HOST=$(echo "${{ secrets.SERVER_HOST }}" | tr -d '\r\n ')
+          if [ -z "$PORT" ]; then PORT="22"; fi
+          
+          ssh-keyscan -p "$PORT" "$HOST" >> ~/.ssh/known_hosts
+
+      - name: Deploy via SSH
+        run: |
+          PORT=$(echo "${{ secrets.SERVER_PORT }}" | tr -dc '0-9')
+          HOST=$(echo "${{ secrets.SERVER_HOST }}" | tr -d '\r\n ')
+          USERNAME=$(echo "${{ secrets.SERVER_USERNAME }}" | tr -d '\r\n ')
+          if [ -z "$PORT" ]; then PORT="22"; fi
+          
+          ssh -i ~/.ssh/id_ed25519 -p "$PORT" "$USERNAME"@"$HOST" << EOF
+            set -e
+            cd ${{ secrets.SERVER_PATH || '~/polissphare' }}
+            git fetch origin ${{ github.ref_name }}
+            git reset --hard origin/${{ github.ref_name }}
+            docker compose down
+            docker compose up -d --build
+            docker image prune -f
+          EOF
+
+      - name: Notify Telegram - Success
+        if: success()
+        uses: appleboy/telegram-action@v1.0.0
+        with:
+          to: ${{ secrets.TELEGRAM_CHAT_ID }}
+          token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          format: html
+          message: |
+            ✅ <b>Deploy Frontend Berhasil</b>
+            <b>Env:</b> <code>${{ github.ref_name == 'main' && 'PROD' || 'DEV' }}</code>
+            <b>Repo:</b> <code>${{ github.repository }}</code>
+            <b>Branch:</b> <code>${{ github.ref_name }}</code>
+            <b>Commit:</b> <a href="${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}">${{ github.sha }}</a>
+            <b>Author:</b> ${{ github.actor }}
+            <a href="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}">Lihat Run</a>
+
+      - name: Notify Telegram - Failure
+        if: failure()
+        uses: appleboy/telegram-action@v1.0.0
+        with:
+          to: ${{ secrets.TELEGRAM_CHAT_ID }}
+          token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          format: html
+          message: |
+            ❌ <b>Deploy Frontend Gagal</b>
+            <b>Env:</b> <code>${{ github.ref_name == 'main' && 'PROD' || 'DEV' }}</code>
+            <b>Repo:</b> <code>${{ github.repository }}</code>
+            <b>Branch:</b> <code>${{ github.ref_name }}</code>
+            <b>Commit:</b> <a href="${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}">${{ github.sha }}</a>
+            <b>Author:</b> ${{ github.actor }}
+            <a href="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}">Lihat Log Error</a>
