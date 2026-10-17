@@ -38,7 +38,7 @@ export default function HomeHeader({ query, cartCount, isLoggedIn, isLoading, on
 
       <header className="header">
         <div className="page-width header-inner">
-          <button type="button" className="logo" aria-label="Beranda Loka">loka<span>.</span></button>
+          <button type="button" className="logo" aria-label="Beranda EKLEGORIA">EKLEGORIA<span>.</span></button>
           <div className="search-area">
             <form className="search-field" role="search" onSubmit={(event) => { event.preventDefault(); onSearch(); }}>
               <Icon name="search" size={18} />

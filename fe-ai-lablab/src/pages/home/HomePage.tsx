@@ -5,6 +5,7 @@ import CategorySection from "./components/CategorySection";
 import FlashSaleSection from "./components/FlashSaleSection";
 import HeroSection from "./components/HeroSection";
 import HomeHeader from "./components/HomeHeader";
+import MidMonthPopup from "./components/MidMonthPopup";
 import MobileNavigation from "./components/MobileNavigation";
 import RecommendationsSection from "./components/RecommendationsSection";
 
@@ -22,6 +23,7 @@ export default function HomePage() {
   const [searchedQuery, setSearchedQuery] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
+  const [showPopup, setShowPopup] = useState(true);
   const activeRequest = useRef<AbortController | null>(null);
 
   useEffect(() => () => activeRequest.current?.abort(), []);
@@ -154,6 +156,7 @@ export default function HomePage() {
       {authMode && (
         <AuthModal mode={authMode} onModeChange={setAuthMode} onClose={() => setAuthMode(null)} onSuccess={completeAuth} />
       )}
+      {showPopup && <MidMonthPopup onClose={() => setShowPopup(false)} />}
       <MobileNavigation cartCount={cartCount} isLoggedIn={isLoggedIn} onOpenAuth={setAuthMode} />
     </div>
   );

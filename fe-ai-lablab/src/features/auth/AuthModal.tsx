@@ -23,7 +23,7 @@ export default function AuthModal({ mode, onModeChange, onClose, onSuccess }: Au
       <section className="auth-modal" role="dialog" aria-modal="true" aria-labelledby="auth-title" onMouseDown={(event) => event.stopPropagation()}>
         <button type="button" className="auth-close" onClick={onClose} aria-label="Tutup">×</button>
         <div className="auth-brand-panel">
-          <button type="button" className="auth-logo">loka<span>.</span></button>
+          <button type="button" className="auth-logo">EKLEGORIA<span>.</span></button>
           <div className="auth-brand-copy">
             <span>BELANJA LEBIH TENANG</span>
             <h2>Satu akun untuk semua yang kamu suka.</h2>
@@ -38,9 +38,9 @@ export default function AuthModal({ mode, onModeChange, onClose, onSuccess }: Au
 
         <div className="auth-form-panel">
           <div className="auth-heading">
-            <span className="mobile-auth-logo">loka.</span>
+            <span className="mobile-auth-logo">EKLEGORIA.</span>
             <h2 id="auth-title">{mode === "login" ? "Selamat datang kembali" : "Buat akun baru"}</h2>
-            <p>{mode === "login" ? "Masuk untuk melanjutkan belanja di Loka." : "Daftar gratis, hanya perlu beberapa langkah."}</p>
+            <p>{mode === "login" ? "Masuk untuk melanjutkan belanja di EKLEGORIA." : "Daftar gratis, hanya perlu beberapa langkah."}</p>
           </div>
 
           <div className="auth-switch">
@@ -75,7 +75,7 @@ export default function AuthModal({ mode, onModeChange, onClose, onSuccess }: Au
             ) : (
               <label className="terms-check">
                 <input type="checkbox" required />
-                <span>Saya menyetujui <button type="button">Syarat & Ketentuan</button> serta <button type="button">Kebijakan Privasi</button> Loka.</span>
+                <span>Saya menyetujui <button type="button">Syarat & Ketentuan</button> serta <button type="button">Kebijakan Privasi</button> EKLEGORIA.</span>
               </label>
             )}
 
