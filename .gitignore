@@ -1,0 +1,39 @@
+# Local credentials and environment files
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Previous repositories retained locally during consolidation
+.repo-backups/
+**/.git/
+
+# Dependencies and generated output
+node_modules/
+vendor/
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.uv-cache/
+.cache/
+.vite/
+.vercel/
+.netlify/
+coverage/
+*.log
+fe-ai-lablab/dist/
+be-ai-lablab/public/build/
+be-ai-lablab/public/hot
+be-ai-lablab/public/storage
+ai/scratch/
+
+# Editors and operating systems
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db

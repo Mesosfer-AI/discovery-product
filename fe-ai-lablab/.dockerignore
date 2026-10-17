@@ -1,0 +1,15 @@
+**/.git
+**/.env*
+**/node_modules
+dist
+build
+.cache
+.vite
+.agents
+.codex
+.claude
+.plugins
+.opencode-skills
+.figma/design-context
+**/*.log
+**/*.tsbuildinfo
