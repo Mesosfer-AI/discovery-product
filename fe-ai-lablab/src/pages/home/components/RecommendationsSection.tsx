@@ -290,12 +290,12 @@ export default function RecommendationsSection({
                       {storeUrl ? (
                         <span className="store-link" aria-hidden="true">
                           Lihat di toko
-                          <Icon name="chevron" size={15} />
+                          <Icon name="chevron" size={12} />
                         </span>
                       ) : (
-                        <p className="store-unavailable">
+                        <span className="store-unavailable">
                           Tautan toko belum tersedia
-                        </p>
+                        </span>
                       )}
                     </div>
                   </article>

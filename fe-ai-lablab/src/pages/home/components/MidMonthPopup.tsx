@@ -40,7 +40,7 @@ export default function MidMonthPopup({ onClose }: MidMonthPopupProps) {
           <span className="midmonth-circle midmonth-circle--a" />
           <span className="midmonth-circle midmonth-circle--b" />
           <img
-            src="/images/popup.png"
+            src="https://images.unsplash.com/photo-1735992006502-3d7c73dfc895?auto=format&fit=crop&w=900&q=88"
             alt="Koleksi fashion pilihan EKLEGORIA Mid Month"
           />
         </div>

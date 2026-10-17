@@ -24,7 +24,7 @@ body {
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
 }
-button, input { font: inherit; }
+button, input, details, summary { font: inherit; }
 button { color: inherit; }
 img { max-width: 100%; }
 
@@ -262,6 +262,36 @@ img { max-width: 100%; }
 .product-meta { display: flex; gap: 7px; margin-top: 6px; color: var(--muted); font-size: 9px; }
 .product-meta span:first-child { color: #a66c24; }
 .product-location { display: flex; align-items: center; gap: 2px; margin-top: 5px; color: #77736c; font-size: 9px; }
+
+.recommendation-scores { display: flex; gap: 5px; flex-wrap: wrap; margin-top: 6px; }
+.recommendation-scores span {
+  font-family: "DM Sans", sans-serif; font-size: 9px; font-weight: 700; letter-spacing: .2px;
+  padding: 2px 5px; border-radius: 3px; background: var(--brand-soft); color: var(--brand);
+}
+
+.recommendation-reasons { margin-top: 5px; }
+.recommendation-reasons > summary {
+  font-family: "DM Sans", sans-serif; font-size: 9px; font-weight: 600;
+  display: inline-flex; align-items: center; gap: 3px; cursor: pointer;
+  color: var(--muted); list-style: none; user-select: none;
+}
+.recommendation-reasons > summary::-webkit-details-marker { display: none; }
+.recommendation-reasons > summary::after { content: "▾"; font-size: 8px; transition: transform .15s ease; }
+.recommendation-reasons[open] > summary::after { transform: rotate(-180deg); }
+.recommendation-reasons > p { margin: 4px 0 0; font-family: "DM Sans", sans-serif; font-size: 9px; line-height: 1.5; color: var(--muted); }
+.recommendation-reasons h4 { margin: 5px 0 2px; font-family: "DM Sans", sans-serif; font-size: 9px; font-weight: 700; color: var(--ink); }
+.recommendation-reasons ul { margin: 0; padding-left: 12px; }
+.recommendation-reasons li { font-family: "DM Sans", sans-serif; font-size: 9px; line-height: 1.5; color: var(--muted); }
+
+.store-link {
+  font-family: "DM Sans", sans-serif; font-size: 9px; font-weight: 700; letter-spacing: .2px;
+  display: inline-flex; align-items: center; gap: 4px; margin-top: 7px;
+  padding: 4px 8px; border-radius: 4px; background: var(--brand); color: #fff;
+  transition: background .15s ease, transform .15s ease;
+}
+.clickable-card:hover .store-link { background: var(--brand-dark); transform: translateY(-1px); }
+.store-unavailable { font-family: "DM Sans", sans-serif; font-size: 9px; font-style: italic; color: var(--muted); margin-top: 7px; display: block; }
+
 .empty-state { padding: 70px 20px; border: 1px solid var(--line); border-top: 0; background: var(--surface); color: var(--muted); text-align: center; }
 .empty-state h3 { margin: 12px 0 4px; color: var(--ink); font-size: 17px; }
 .empty-state p { margin: 0 0 17px; font-size: 14px; }
