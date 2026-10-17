@@ -2,7 +2,7 @@ FROM php:8.4-fpm-bookworm
 WORKDIR /var/www/html
 RUN apt-get update \
     && apt-get install -y --no-install-recommends libcurl4-openssl-dev libonig-dev libxml2-dev unzip \
-    && docker-php-ext-install -j"$(nproc)" curl dom mbstring opcache pdo_mysql \
+    && docker-php-ext-install -j"$(nproc)" curl dom mbstring opcache pcntl pdo_mysql \
     && rm -rf /var/lib/apt/lists/*
 COPY --from=composer:2 /usr/bin/composer /usr/local/bin/composer
 COPY composer.json composer.lock ./

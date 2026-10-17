@@ -48,27 +48,84 @@ export function safeExternalUrl(value: string | null | undefined): string | unde
 
 export async function discoverProducts(query: DiscoveryQuery, signal?: AbortSignal): Promise<DiscoveryResponse> {
   const baseUrl = (import.meta.env?.VITE_BACKEND_URL || "").replace(/\/$/, "");
-  let response: Response;
+  const deadline = new AbortController();
+  const requestSignal = signal ? AbortSignal.any([signal, deadline.signal]) : deadline.signal;
+  const timeout = setTimeout(() => deadline.abort(new DOMException(
+    "Pencarian melewati batas waktu. Silakan coba lagi.", "TimeoutError",
+  )), 15 * 60 * 1000);
+
+  async function request(url: string, options: RequestInit) {
+    requestSignal.throwIfAborted();
+    let response: Response;
+    try {
+      response = await fetch(url, { ...options, signal: requestSignal });
+    } catch (error) {
+      requestSignal.throwIfAborted();
+      if (error instanceof DOMException && error.name === "AbortError") throw error;
+      throw new Error("Tidak dapat menghubungi layanan rekomendasi. Coba lagi.");
+    }
+    if (!response.ok) throwForStatus(response.status);
+    try {
+      const data: unknown = await response.json();
+      return { status: response.status, data };
+    } catch {
+      requestSignal.throwIfAborted();
+      throw new Error("Respons rekomendasi tidak valid. Silakan coba lagi.");
+    }
+  }
+
   try {
-    response = await fetch(`${baseUrl}/api/v1/discover`, {
+    const accepted = await request(`${baseUrl}/api/v1/discover/jobs`, {
       method: "POST",
       headers: { "Content-Type": "application/json", Accept: "application/json" },
       body: JSON.stringify(query),
-      signal,
     });
-  } catch (error) {
-    if (signal?.aborted || (error instanceof DOMException && error.name === "AbortError")) throw error;
-    throw new Error("Tidak dapat menghubungi layanan rekomendasi. Coba lagi.");
-  }
+    const job = accepted.data as { id?: unknown; status?: unknown } | null;
+    if (accepted.status !== 202 || !job || job.status !== "queued" || typeof job.id !== "string"
+      || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(job.id)) {
+      throw new Error("Respons rekomendasi tidak valid. Silakan coba lagi.");
+    }
 
-  if (!response.ok) {
-    if (response.status === 422) throw new Error("Periksa kata kunci dan rentang harga Anda.");
-    if (response.status === 429) throw new Error("Akses ke sumber pencarian sedang dibatasi. Silakan coba lagi nanti.");
-    throw new Error("Layanan rekomendasi sedang tidak tersedia. Silakan coba lagi.");
+    while (true) {
+      const polled = await request(`${baseUrl}/api/v1/discover/jobs/${job.id}`, {
+        method: "GET", headers: { Accept: "application/json" },
+      });
+      const state = polled.data as { status?: unknown; result?: unknown; error_status?: unknown } | null;
+      if (polled.status !== 200 || !state) throw new Error("Respons rekomendasi tidak valid. Silakan coba lagi.");
+      if (state.status === "completed") return parseDiscoveryResponse(state.result);
+      if (state.status === "failed" && typeof state.error_status === "number" && [429, 502, 503].includes(state.error_status)) {
+        throwForStatus(state.error_status);
+      }
+      if (state.status !== "queued" && state.status !== "processing") {
+        throw new Error("Respons rekomendasi tidak valid. Silakan coba lagi.");
+      }
+      await new Promise<void>((resolve, reject) => {
+        requestSignal.throwIfAborted();
+        const timer = setTimeout(() => {
+          requestSignal.removeEventListener("abort", abort);
+          resolve();
+        }, 2000);
+        const abort = () => {
+          clearTimeout(timer);
+          reject(requestSignal.reason);
+        };
+        requestSignal.addEventListener("abort", abort, { once: true });
+      });
+    }
+  } finally {
+    clearTimeout(timeout);
   }
+}
 
+function throwForStatus(status: number): never {
+  if (status === 422) throw new Error("Periksa kata kunci dan rentang harga Anda.");
+  if (status === 429) throw new Error("Akses ke sumber pencarian sedang dibatasi. Silakan coba lagi nanti.");
+  throw new Error("Layanan rekomendasi sedang tidak tersedia. Silakan coba lagi.");
+}
+
+function parseDiscoveryResponse(value: unknown): DiscoveryResponse {
   try {
-    const data = await response.json() as DiscoveryResponse;
+    const data = value as DiscoveryResponse;
     if (!data || typeof data.query !== "string" || !Array.isArray(data.recommendations)
       || ![data.total_discovered, data.total_deduplicated, data.total_verified, data.execution_time_seconds]
         .every((value) => typeof value === "number" && Number.isFinite(value) && value >= 0)

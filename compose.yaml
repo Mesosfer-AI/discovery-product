@@ -16,7 +16,7 @@ services:
       timeout: 5s
       retries: 3
 
-  backend:
+  backend: &backend
     build: ./be-ai-lablab
     env_file:
       - path: ./.env
@@ -41,7 +41,7 @@ services:
       REDIS_HOST: ${REDIS_HOST:-host.docker.internal}
       REDIS_PORT: ${REDIS_PORT:-6379}
       AI_SERVICE_URL: ${AI_SERVICE_URL:-http://ai:47283}
-      AI_SERVICE_TIMEOUT: ${AI_SERVICE_TIMEOUT:-180}
+      AI_SERVICE_TIMEOUT: ${AI_SERVICE_TIMEOUT:-600}
     volumes:
       - backend_storage:/var/www/html/storage
     extra_hosts:
@@ -56,6 +56,16 @@ services:
       timeout: 5s
       retries: 6
       start_period: 60s
+
+  worker:
+    <<: *backend
+    command: ["php", "artisan", "queue:work", "discovery", "--queue=discovery", "--sleep=1", "--tries=1"]
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      disable: true
+    stop_grace_period: 11m
 
   ai:
     build: ./ai

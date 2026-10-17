@@ -31,6 +31,15 @@ return [
 
     'connections' => [
 
+        'discovery' => [
+            'driver' => 'database',
+            'connection' => null,
+            'table' => 'jobs',
+            'queue' => 'discovery',
+            'retry_after' => (int) env('AI_SERVICE_TIMEOUT', 600) + 60,
+            'after_commit' => false,
+        ],
+
         'sync' => [
             'driver' => 'sync',
         ],

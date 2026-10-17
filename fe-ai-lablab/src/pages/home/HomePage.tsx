@@ -61,7 +61,6 @@ export default function HomePage() {
     const controller = new AbortController();
     activeRequest.current = controller;
     setIsLoading(true);
-    const timer = window.setTimeout(() => controller.abort("timeout"), 200000);
     try {
       const result = await discoverProducts({
         query: trimmedQuery,
@@ -73,12 +72,9 @@ export default function HomePage() {
       if (activeRequest.current === controller) setResponse(result);
     } catch (cause) {
       if (activeRequest.current !== controller) return;
-      if (controller.signal.aborted && controller.signal.reason !== "timeout") return;
-      setError(controller.signal.reason === "timeout"
-        ? "Pencarian memerlukan waktu terlalu lama. Silakan coba lagi."
-        : cause instanceof Error ? cause.message : "Pencarian gagal. Silakan coba lagi.");
+      if (controller.signal.aborted) return;
+      setError(cause instanceof Error ? cause.message : "Pencarian gagal. Silakan coba lagi.");
     } finally {
-      window.clearTimeout(timer);
       if (activeRequest.current === controller) {
         activeRequest.current = null;
         setIsLoading(false);
