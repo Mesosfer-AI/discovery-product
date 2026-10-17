@@ -19,7 +19,7 @@ export default defineConfig(({ mode }) => {
       minify: !emitSourcemaps,
     },
     plugins: [
-react(),
+      react(),
       tailwindcss(),
       figmaSiteConfiguration(siteConfiguration),
       figmaErrorOverlayReplay(),
@@ -46,7 +46,7 @@ react(),
       watch: {
         ignored: [
           '**/.figma/**',
-],
+        ],
       },
     },
     preview: {
@@ -95,7 +95,7 @@ function figmaSiteConfiguration(config: FigmaSiteConfiguration): Plugin {
     return html.replace(`<!-- ${slotName} -->`, content)
   }
 
-  const title = config.title ?? "Figma Make App"
+  const title = config.title ?? "EKLEGORIA"
   const description = config.description ?? ''
   // Imported HTML keeps its own favicon; new Makes default to the Make product icon.
   const favicon = config.icons?.icon ?? '/favicon.svg'

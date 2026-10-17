@@ -171,126 +171,135 @@ export default function RecommendationsSection({
               const imageUrl = safeExternalUrl(product.image_url);
 
               return (
-                <article
-                  className="product-card discovery-card"
+                <a
                   key={product.id}
+                  className={`product-card discovery-card${storeUrl ? " clickable-card" : ""}`}
+                  href={storeUrl ?? undefined}
+                  target={storeUrl ? "_blank" : undefined}
+                  rel={storeUrl ? "noopener noreferrer" : undefined}
+                  aria-label={`Lihat ${product.title} di toko`}
+                  style={{ textDecoration: "none", color: "inherit", display: "block" }}
                 >
-                  <div className="product-image">
-                    {imageUrl ? (
-                      <img
-                        src={imageUrl}
-                        alt={product.title}
-                        loading="lazy"
-                      />
-                    ) : (
-                      <div className="product-image-placeholder">
-                        <Icon name="store" size={30} />
-                        <span>Gambar belum tersedia</span>
-                      </div>
-                    )}
-
-                    <span className="product-label">
-                      Pilihan #{recommendation.rank}
-                    </span>
-
-                    <button
-                      type="button"
-                      className={`favorite ${favorite ? "active" : ""}`}
-                      onClick={() => onFavoriteToggle(product.id)}
-                      aria-pressed={favorite}
-                      aria-label={
-                        favorite
-                          ? "Hapus dari favorit"
-                          : "Tambah ke favorit"
-                      }
-                    >
-                      <Icon name="heart" size={17} fill={favorite} />
-                    </button>
-                  </div>
-
-                  <div className="product-info">
-                    <h3>{product.title}</h3>
-
-                    <span className="shop">
-                      <Icon name="store" size={12} />
-                      {" "}{product.store_name}
-                    </span>
-
-                    <div className="product-price">
-                      <strong>
-                        {new Intl.NumberFormat("id-ID", {
-                          style: "currency",
-                          currency: product.currency,
-                          maximumFractionDigits:
-                            product.currency === "IDR" ? 0 : 2,
-                        }).format(product.price)}
-                      </strong>
-                    </div>
-
-                    <div className="product-meta">
-                      {typeof product.rating === "number" && (
-                        <span>★ {product.rating}</span>
+                  <article>
+                    <div className="product-image">
+                      {imageUrl ? (
+                        <img
+                          src={imageUrl}
+                          alt={product.title}
+                          loading="lazy"
+                        />
+                      ) : (
+                        <div className="product-image-placeholder">
+                          <Icon name="store" size={30} />
+                          <span>Gambar belum tersedia</span>
+                        </div>
                       )}
-                      {typeof product.review_count === "number" && (
-                        <span>
-                          {product.review_count.toLocaleString("id-ID")} ulasan
-                        </span>
-                      )}
-                    </div>
 
-                    <div className="recommendation-scores">
-                      <span>
-                        Trust {recommendation.trust_score}/100
+                      <span className="product-label">
+                        Pilihan #{recommendation.rank}
                       </span>
-                      <span>
-                        Kecocokan {recommendation.match_score}/100
-                      </span>
-                    </div>
 
-                    <details className="recommendation-reasons">
-                      <summary>Mengapa direkomendasikan?</summary>
-                      <p>{recommendation.why_recommended}</p>
-
-                      {recommendation.pros.length > 0 && (
-                        <>
-                          <h4>Kelebihan</h4>
-                          <ul>
-                            {recommendation.pros.map((pro, index) => (
-                              <li key={index}>{pro}</li>
-                            ))}
-                          </ul>
-                        </>
-                      )}
-
-                      {recommendation.cons.length > 0 && (
-                        <>
-                          <h4>Pertimbangan</h4>
-                          <ul>
-                            {recommendation.cons.map((con, index) => (
-                              <li key={index}>{con}</li>
-                            ))}
-                          </ul>
-                        </>
-                      )}
-                    </details>
-
-                    {storeUrl ? (
-                      <a
-                        className="store-link"
-                        href={storeUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
+                      <button
+                        type="button"
+                        className={`favorite ${favorite ? "active" : ""}`}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          onFavoriteToggle(product.id);
+                        }}
+                        aria-pressed={favorite}
+                        aria-label={
+                          favorite
+                            ? "Hapus dari favorit"
+                            : "Tambah ke favorit"
+                        }
                       >
-                        Lihat di toko
-                        <Icon name="chevron" size={15} />
-                      </a>
-                    ) : (
-                      <p className="store-unavailable">
-                        Tautan toko belum tersedia
-                      </p>
-                    )}
-                  </div>
-                </article>
+                        <Icon name="heart" size={17} fill={favorite} />
+                      </button>
+                    </div>
+
+                    <div className="product-info">
+                      <h3>{product.title}</h3>
+
+                      <span className="shop">
+                        <Icon name="store" size={12} />
+                        {" "}{product.store_name}
+                      </span>
+
+                      <div className="product-price">
+                        <strong>
+                          {new Intl.NumberFormat("id-ID", {
+                            style: "currency",
+                            currency: product.currency,
+                            maximumFractionDigits:
+                              product.currency === "IDR" ? 0 : 2,
+                          }).format(product.price)}
+                        </strong>
+                      </div>
+
+                      <div className="product-meta">
+                        {typeof product.rating === "number" && (
+                          <span>★ {product.rating}</span>
+                        )}
+                        {typeof product.review_count === "number" && (
+                          <span>
+                            {product.review_count.toLocaleString("id-ID")} ulasan
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="recommendation-scores">
+                        <span>
+                          Trust {recommendation.trust_score}/100
+                        </span>
+                        <span>
+                          Kecocokan {recommendation.match_score}/100
+                        </span>
+                      </div>
+
+                      <details
+                        className="recommendation-reasons"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <summary>Mengapa direkomendasikan?</summary>
+                        <p>{recommendation.why_recommended}</p>
+
+                        {recommendation.pros.length > 0 && (
+                          <>
+                            <h4>Kelebihan</h4>
+                            <ul>
+                              {recommendation.pros.map((pro, index) => (
+                                <li key={index}>{pro}</li>
+                              ))}
+                            </ul>
+                          </>
+                        )}
+
+                        {recommendation.cons.length > 0 && (
+                          <>
+                            <h4>Pertimbangan</h4>
+                            <ul>
+                              {recommendation.cons.map((con, index) => (
+                                <li key={index}>{con}</li>
+                              ))}
+                            </ul>
+                          </>
+                        )}
+                      </details>
+
+                      {storeUrl ? (
+                        <span className="store-link" aria-hidden="true">
+                          Lihat di toko
+                          <Icon name="chevron" size={15} />
+                        </span>
+                      ) : (
+                        <p className="store-unavailable">
+                          Tautan toko belum tersedia
+                        </p>
+                      )}
+                    </div>
+                  </article>
+                </a>
               );
             })}
           </div>
