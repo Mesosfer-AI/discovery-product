@@ -137,6 +137,7 @@ The AI container runs one Uvicorn worker so its provider request limiter is shar
 | Frontend port cannot be bound | Set an available `APP_PORT` and matching `APP_URL` in the root `.env`, then run Compose again. |
 | AI exits during startup | Inspect `docker compose logs ai`; AMD requires a valid `rc-` key when selected. |
 | Search is unavailable or returns no products | Check AI logs, provider credentials and quotas, source availability, and the selected budget. |
+| Search reports exhausted quota | Restore the SerpAPI account's search quota or use a key with available quota in root `SERPAPI_API_KEY`, then recreate services with Compose. Exhausted quota stops the job immediately with error status 402; direct marketplace fallback is skipped because it cannot restore the account quota. One discovery may use multiple SerpAPI requests across sources and merchant link resolutions. |
 | Search remains queued | Check `docker compose ps worker` and `docker compose logs worker`; the worker must reach the same database as the backend. |
 | Old production frontend still returns Cloudflare 524 | Rebuild the frontend and backend, start the worker, then refresh the page to use the job endpoints. Check the browser Network panel for `POST /api/v1/discover/jobs` returning HTTP 202. |
 | Backend cannot finish startup | Check external MySQL credentials, database existence, migration privileges, and network access from the backend container. |

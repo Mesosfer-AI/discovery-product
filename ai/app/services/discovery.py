@@ -4,6 +4,7 @@ import logging
 import re
 import time
 from collections import Counter
+from collections.abc import Coroutine
 from itertools import zip_longest
 from typing import Any, Iterable
 from urllib.parse import quote_plus, urlparse
@@ -14,9 +15,22 @@ from app.services.browser import browser_manager
 from app.services.dedup import clean_url
 from app.services.redis_client import cache_manager
 from app.services.regions import DISCOVERY_MARKETPLACES, DISCOVERY_SOURCES, MAJOR_RETAILERS, resolve_region
-from app.services.search import SearchBlockedError, SearchUnavailableError, SerpApiError, organic_urls, serpapi_enabled, serpapi_get
+from app.services.search import SearchBlockedError, SearchUnavailableError, SerpApiError, SerpApiQuotaExhaustedError, organic_urls, serpapi_enabled, serpapi_get
 
 logger = logging.getLogger(__name__)
+
+
+async def _gather_searches(*calls: Coroutine[Any, Any, Any]) -> list[Any]:
+    """Drain sibling searches before propagating a fatal quota error or cancellation."""
+    tasks = [asyncio.create_task(call) for call in calls]
+    try:
+        return await asyncio.gather(*tasks)
+    except BaseException:
+        for task in tasks:
+            task.cancel()
+        await asyncio.gather(*tasks, return_exceptions=True)
+        raise
+
 
 # ponytail: tiny stop list; extend if generic words start letting junk pages through.
 _STOP_TOKENS = {"the", "and", "for", "with", "buy", "new", "online", "store", "shop", "official"}
@@ -399,11 +413,18 @@ async def resolve_store_links(
     if top_n <= 0 or not pending or not serpapi_enabled():
         return products
     sem = asyncio.Semaphore(settings.discovery_search_concurrency)
+    quota_error = None
 
     async def resolve(p: RawProduct) -> bool:
+        nonlocal quota_error
         try:
             async with sem:
+                if quota_error is not None:
+                    raise quota_error
                 data = await serpapi_get("google_immersive_product", "", gl, hl, page_token=p.offers_token)
+        except SerpApiQuotaExhaustedError as exc:
+            quota_error = exc
+            raise
         except SerpApiError as exc:
             logger.warning("Offer resolution failed for %r, keeping %s: %s", p.title[:60], urlparse(p.url).netloc, exc)
             return False
@@ -424,12 +445,12 @@ async def resolve_store_links(
         return True
 
     batch = pending[:top_n]
-    ok = sum(await asyncio.gather(*(resolve(p) for p in batch)))
+    ok = sum(await _gather_searches(*(resolve(p) for p in batch)))
     used = len(batch)
     deficit = need - sum(not is_google_link(p.url) for p in products)
     backfill = pending[used:used + max(0, min(deficit, cap - used))]
     if backfill:
-        ok += sum(await asyncio.gather(*(resolve(p) for p in backfill)))
+        ok += sum(await _gather_searches(*(resolve(p) for p in backfill)))
         used += len(backfill)
     logger.info(
         "Resolved merchant links for %d/%d shopping candidates (SerpAPI calls %d: top %d + backfill %d, cap %d, need %d)",
@@ -693,15 +714,23 @@ class DiscoveryWorkerPool:
         results: list[list[str]] | None = None
         provider, n_shop_raw = "marketplace", 0
         if serpapi_enabled():
+            quota_error = None
+
             async def sa(engine: str, q: str) -> dict[str, Any] | None:
+                nonlocal quota_error
                 async with search_sem:
                     try:
+                        if quota_error is not None:
+                            raise quota_error
                         return await serpapi_get(engine, q, region.gl, region.hl)
+                    except SerpApiQuotaExhaustedError as exc:
+                        quota_error = exc
+                        raise
                     except SerpApiError as exc:
                         logger.warning("SerpAPI source failed for %r (%s): %s", q, engine, exc)
                         return None
 
-            shop_data, *web_data = await asyncio.gather(
+            shop_data, *web_data = await _gather_searches(
                 sa("google_shopping", query), *(sa("google", q) for _, q in queries)
             )
             if shop_data is not None or any(d is not None for d in web_data):

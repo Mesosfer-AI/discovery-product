@@ -14,6 +14,10 @@ class SerpApiError(Exception):
     """SerpAPI call failed (HTTP error, quota, or an "error" field in the JSON). Never contains the key."""
 
 
+class SerpApiQuotaExhaustedError(SerpApiError):
+    """The search account needs more credits; browser retries cannot replenish them."""
+
+
 class SearchUnavailableError(Exception):
     """Browser search failed before it could return usable results."""
 
@@ -55,6 +59,8 @@ async def serpapi_get(engine: str, q: str, gl: str, hl: str, **extra: str) -> di
         except ValueError:
             data = {}
         if resp.status_code >= 400 or data.get("error"):
+            if "run out of searches" in str(data.get("error", "")).lower():
+                raise SerpApiQuotaExhaustedError("Search provider quota exhausted.")
             # SerpAPI also reports errors with HTTP 200 (e.g. "Google hasn't returned any results").
             raise SerpApiError(f"{engine} {resp.status_code}: {str(data.get('error', 'unknown error'))[:150]}")
         return data

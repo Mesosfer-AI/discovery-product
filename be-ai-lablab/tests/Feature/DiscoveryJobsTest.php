@@ -51,7 +51,7 @@ test('background searches sanitize upstream failures', function (int $status, in
     $this->getJson('/api/v1/discover/jobs/'.$id)->assertOk()->assertExactJson([
         'status' => 'failed', 'error_status' => $expected,
     ]);
-})->with([[429, 429], [500, 502]]);
+})->with([[402, 402], [429, 429], [500, 502]]);
 
 test('background searches report connection failures without leaving polling pending', function () {
     Http::fake(['ai.internal:8000/api/v1/discover' => Http::failedConnection()]);

@@ -4,6 +4,7 @@ from collections import Counter
 from pathlib import Path
 
 import httpx
+import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
@@ -164,7 +165,7 @@ def test_serpapi_get_error_json_hides_key(monkeypatch) -> None:
         asyncio.run(search.serpapi_get("google", "x", "us", "en"))
         raise AssertionError("expected SerpApiError")
     except search.SerpApiError as exc:
-        assert "run out" in str(exc) and "secret-key" not in str(exc)
+        assert str(exc) == "Search provider quota exhausted." and "secret-key" not in str(exc)
 
 
 def test_serpapi_get_retries_once_on_5xx(monkeypatch) -> None:
@@ -176,3 +177,93 @@ def test_serpapi_get_retries_once_on_5xx(monkeypatch) -> None:
 
     _mock_http(monkeypatch, handler)
     assert asyncio.run(search.serpapi_get("google", "x", "us", "en")) == WEB and n["c"] == 2
+
+
+@pytest.mark.parametrize("status", [200, 429])
+def test_exhausted_quota_stops_before_browser_fallback(monkeypatch, status) -> None:
+    calls = []
+
+    def handler(request):
+        calls.append(request)
+        return httpx.Response(status, json={"error": "Your account has run out of searches."})
+
+    _mock_http(monkeypatch, handler)
+    monkeypatch.setattr(settings, "search_provider", "serpapi")
+    pool, marketplace_calls = _pool(monkeypatch)
+    with pytest.raises(search.SerpApiError, match="Search provider quota exhausted"):
+        asyncio.run(pool.discover(UserSearchQuery(query="macbook", country="id")))
+    assert not marketplace_calls
+    assert len(calls) == 1
+
+
+def test_temporary_rate_limit_is_not_quota_exhaustion(monkeypatch) -> None:
+    _mock_http(monkeypatch, lambda r: httpx.Response(429, json={"error": "Too many requests. Try again later."}))
+    with pytest.raises(search.SerpApiError) as caught:
+        asyncio.run(search.serpapi_get("google", "macbook", "id", "id"))
+    assert type(caught.value) is search.SerpApiError
+
+
+def test_quota_endpoint_returns_sanitized_402(monkeypatch) -> None:
+    from unittest.mock import AsyncMock
+    from app.main import app
+    from app.services.pipeline import pipeline
+
+    with monkeypatch.context() as upstream_patch:
+        _mock_http(upstream_patch, lambda r: httpx.Response(429, json={"error": "Your account has run out of searches. secret-key"}))
+        with pytest.raises(search.SerpApiError) as caught:
+            asyncio.run(search.serpapi_get("google", "macbook", "id", "id"))
+
+    async def request():
+        async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as client:
+            return await client.post("/api/v1/discover", json={"query": "macbook"})
+
+    monkeypatch.setattr(pipeline, "execute", AsyncMock(side_effect=caught.value))
+    response = asyncio.run(request())
+    assert response.status_code == 402
+    assert response.json() == {"detail": "Search provider quota exhausted."}
+
+
+def test_quota_cancels_inflight_sources_and_skips_queued_sources(monkeypatch) -> None:
+    async def check():
+        started, cancelled = [], []
+        siblings_started = asyncio.Event()
+
+        async def fake_get(engine, q, gl, hl):
+            started.append(q)
+            if engine == "google_shopping":
+                await siblings_started.wait()
+                raise search.SerpApiQuotaExhaustedError("Search provider quota exhausted.")
+            if len(started) == 3:
+                siblings_started.set()
+            try:
+                await asyncio.Future()
+            finally:
+                cancelled.append(q)
+
+        monkeypatch.setattr(settings, "search_provider", "serpapi")
+        monkeypatch.setattr(settings, "serpapi_api_key", "configured-key")
+        monkeypatch.setattr(settings, "discovery_search_concurrency", 3)
+        monkeypatch.setattr(discovery, "serpapi_get", fake_get)
+        pool, marketplace_calls = _pool(monkeypatch)
+        with pytest.raises(search.SerpApiQuotaExhaustedError):
+            await asyncio.wait_for(pool.discover(UserSearchQuery(query="macbook")), timeout=1)
+        assert len(started) == 3
+        assert len(cancelled) == 2
+        assert not marketplace_calls
+
+    asyncio.run(check())
+
+
+def test_offer_resolution_propagates_quota(monkeypatch) -> None:
+    async def exhausted(*args, **kwargs):
+        raise search.SerpApiQuotaExhaustedError("Search provider quota exhausted.")
+
+    monkeypatch.setattr(settings, "search_provider", "serpapi")
+    monkeypatch.setattr(settings, "serpapi_api_key", "configured-key")
+    monkeypatch.setattr(discovery, "serpapi_get", exhausted)
+    products = shopping_to_products({"shopping_results": [{
+        "title": "Macbook", "price": "$1000", "product_link": "https://www.google.com/search?product=1",
+        "immersive_product_page_token": "token",
+    }]}, "macbook")
+    with pytest.raises(search.SerpApiQuotaExhaustedError):
+        asyncio.run(discovery.resolve_store_links(products, "us", "en"))

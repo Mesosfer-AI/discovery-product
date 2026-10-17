@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException
 from app.schemas.product import DiscoveryResponse, UserSearchQuery
 from app.services.pipeline import pipeline
-from app.services.search import SearchBlockedError, SearchUnavailableError
+from app.services.search import SearchBlockedError, SearchUnavailableError, SerpApiQuotaExhaustedError
 
 router = APIRouter()
 
@@ -17,6 +17,8 @@ async def discover_products(query: UserSearchQuery) -> DiscoveryResponse:
     """
     try:
         return await pipeline.execute(query)
+    except SerpApiQuotaExhaustedError as exc:
+        raise HTTPException(status_code=402, detail="Search provider quota exhausted.") from exc
     except SearchBlockedError as exc:
         raise HTTPException(status_code=429, detail="Search is temporarily blocked. Please try again later.") from exc
     except SearchUnavailableError as exc:

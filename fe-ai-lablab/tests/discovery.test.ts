@@ -189,6 +189,20 @@ test("blocked search explains that source access is restricted", async () => {
   await assert.rejects(discoverProducts({ query: "macbook" }), /Akses ke sumber pencarian sedang dibatasi/);
 });
 
+test("exhausted search quota ends polling with an actionable message", async () => {
+  let calls = 0;
+  globalThis.fetch = async (_url, options) => {
+    calls++;
+    return options?.method === "POST" ? queuedJob()
+      : Response.json({ status: "failed", error_status: 402, detail: "PRIVATE_PROVIDER_DETAIL" });
+  };
+
+  await assert.rejects(discoverProducts({ query: "macbook" }), {
+    message: "Kuota layanan pencarian habis. Hubungi pengelola untuk mengisi ulang kuota.",
+  });
+  assert.equal(calls, 2);
+});
+
 test("search preserves request cancellation", async () => {
   globalThis.fetch = async () => { throw new DOMException("Cancelled", "AbortError"); };
 

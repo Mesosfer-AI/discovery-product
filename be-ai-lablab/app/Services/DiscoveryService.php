@@ -23,6 +23,10 @@ class DiscoveryService
             return ['status' => 503, 'body' => ['message' => 'AI discovery is unavailable. Please try again later.']];
         }
 
+        if ($response->status() === 402) {
+            return ['status' => 402, 'body' => ['message' => 'Search provider quota is exhausted. Contact the administrator.']];
+        }
+
         if ($response->status() === 429) {
             return ['status' => 429, 'body' => ['message' => 'Search is temporarily blocked. Please try again later.']];
         }

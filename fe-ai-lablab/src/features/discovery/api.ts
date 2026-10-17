@@ -93,7 +93,7 @@ export async function discoverProducts(query: DiscoveryQuery, signal?: AbortSign
       const state = polled.data as { status?: unknown; result?: unknown; error_status?: unknown } | null;
       if (polled.status !== 200 || !state) throw new Error("Respons rekomendasi tidak valid. Silakan coba lagi.");
       if (state.status === "completed") return parseDiscoveryResponse(state.result);
-      if (state.status === "failed" && typeof state.error_status === "number" && [429, 502, 503].includes(state.error_status)) {
+      if (state.status === "failed" && typeof state.error_status === "number" && [402, 429, 502, 503].includes(state.error_status)) {
         throwForStatus(state.error_status);
       }
       if (state.status !== "queued" && state.status !== "processing") {
@@ -118,6 +118,7 @@ export async function discoverProducts(query: DiscoveryQuery, signal?: AbortSign
 }
 
 function throwForStatus(status: number): never {
+  if (status === 402) throw new Error("Kuota layanan pencarian habis. Hubungi pengelola untuk mengisi ulang kuota.");
   if (status === 422) throw new Error("Periksa kata kunci dan rentang harga Anda.");
   if (status === 429) throw new Error("Akses ke sumber pencarian sedang dibatasi. Silakan coba lagi nanti.");
   throw new Error("Layanan rekomendasi sedang tidak tersedia. Silakan coba lagi.");
