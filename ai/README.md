@@ -234,7 +234,7 @@ Interactive Swagger API docs available at: **http://localhost:8000/docs**
 
 ## 🐳 Docker & Docker Compose Deployment
 
-Use the [root repository instructions](../README.md) to build and start the frontend, Laravel backend, AI service, MySQL, and Redis together. Run Compose commands from the repository root:
+Use the [root repository instructions](../README.md) to build and start the frontend, Laravel backend, and AI service with your existing external MySQL and Redis services. Configure their reachable addresses in the root `.env`. Run Compose commands from the repository root:
 
 ```bash
 docker compose up -d --build

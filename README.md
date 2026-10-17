@@ -14,15 +14,15 @@ Search sources include Shopee, Tokopedia, Alibaba, Amazon, Erafone, Digimap, and
 4. The configured language model evaluates available product and seller evidence, then ranks candidates against the shopping request.
 5. The frontend displays recommendations and applies the selected price range.
 
-One repository contains all three applications. Docker Compose builds them and runs MySQL and Redis alongside them:
+One repository contains all three applications. Docker Compose builds and runs only the frontend, backend, and AI service. MySQL, Redis, and optional S3/MinIO storage are existing external services:
 
 | Directory or service | Responsibility | Stack |
 | --- | --- | --- |
 | `fe-ai-lablab/` | Search interface and recommendation cards | React, TypeScript, Vite, Nginx |
 | `be-ai-lablab/` | Request validation and AI API gateway | Laravel, PHP-FPM |
 | `ai/` | Discovery, deduplication, trust assessment, and ranking | Python, FastAPI, Playwright |
-| MySQL | Persistent application database | MySQL 8.4 |
-| Redis | Discovery cache and deduplication state | Redis 7 |
+| External MySQL | Persistent application database | Existing server |
+| External Redis | Discovery cache and deduplication state | Existing server |
 
 Run Git commands from this root. The previous repositories' Git metadata is preserved locally in the ignored `.repo-backups/` directory; the application folders are ordinary directories in the new repository, not submodules.
 
@@ -62,11 +62,15 @@ SERPAPI_API_KEY=<your SerpAPI key>
 
 Replace the placeholders with your own keys. The AMD key must begin with `rc-`. Keep the model IDs and other settings from the root `.env.example`, or choose models supported by your provider. Custom OpenAI-compatible and Ollama providers are also supported through this file.
 
-Containers can start without provider credentials using the default custom provider; discovery requests require valid credentials for the selected external providers. Selecting AMD requires a valid AMD key even during startup.
+The AI service can start without provider credentials using the default custom provider; discovery requests require valid credentials for the selected external providers. Selecting AMD requires a valid AMD key even during startup. Laravel requires the configured external database before it can finish startup.
 
 ### 3. Review deployment settings
 
-For a server, set `APP_URL` to its public URL and choose database passwords before the first startup. Leave `APP_KEY` empty to generate and persist it automatically. The template's `DB_HOST`, `AI_SERVICE_URL`, and Redis addresses refer to services inside the Compose network. Leave `VITE_BACKEND_URL` empty for same-origin `/api` requests.
+Set `APP_URL` to the server's public URL. Configure `DB_HOST`, `DB_PORT`, `DB_DATABASE`, `DB_USERNAME`, and `DB_PASSWORD` for an existing MySQL database and user with migration privileges. Configure `REDIS_HOST`, `REDIS_PORT`, and `REDIS_PASSWORD` for Laravel, and `REDIS_URL` for the AI service. For authenticated Redis, include credentials in the AI URL, for example `redis://username:password@hostname:6379/0` (URL-encode special characters).
+
+The template uses `host.docker.internal` to reach services on the Docker host, including Linux through the host gateway mapping. Existing services must listen on an address reachable from the containers and allow these connections. For remote services, use their reachable hostnames and ports. For another Docker network, arrange shared network connectivity and use that network's service addresses.
+
+Optional `AWS_*` settings pass existing S3/MinIO configuration to Laravel. The application keeps `FILESYSTEM_DISK=local`; selecting the `s3` disk requires an S3 filesystem adapter, which is not currently installed. No storage service is created by Compose. Leave `APP_KEY` empty to generate and persist it automatically, and leave `VITE_BACKEND_URL` empty for same-origin `/api` requests. `AI_SERVICE_URL` points to the AI container inside the Compose network.
 
 ### 4. Build and start all services
 
@@ -76,7 +80,7 @@ Build and start everything:
 docker compose up -d --build
 ```
 
-Open [http://localhost:47281](http://localhost:47281). The frontend serves the application and forwards `/api` requests to Laravel. Only the frontend publishes a host port; AI, MySQL, Redis, and PHP-FPM communicate over the Compose network. Laravel migrations run automatically before PHP-FPM starts.
+Open [http://localhost:47281](http://localhost:47281). The frontend serves the application and forwards `/api` requests to Laravel. Only the frontend publishes a host port; AI and PHP-FPM communicate over the Compose network. Laravel migrations run automatically against the configured external database before PHP-FPM starts.
 
 The first build downloads the base images, application dependencies, and Chromium. Check startup progress with `docker compose logs -f` and wait for all services to report healthy in `docker compose ps`.
 
@@ -87,10 +91,8 @@ All Docker services listen on high ports:
 | Frontend | 47281 | 47281 (configurable with `APP_PORT`) |
 | Backend PHP-FPM | 47282 | Internal only |
 | AI | 47283 | Internal only |
-| MySQL | 47284 | Internal only |
-| Redis | 47285 | Internal only |
 
-Set both `APP_PORT` and `APP_URL` in the root `.env` when changing the public port. The default database passwords are for local development.
+Set both `APP_PORT` and `APP_URL` in the root `.env` when changing the public port. External database, Redis, and storage ports are configured separately in the same file.
 
 ### 5. Test the application
 
@@ -115,9 +117,9 @@ After changing the root `.env`, apply the new environment with `docker compose u
 
 ## Data persistence
 
-Rebuild after application source changes. MySQL data, Redis data, and Laravel storage persist in named volumes across rebuilds and `docker compose down`. When `APP_KEY` is empty, the backend generates a key once and saves it in its storage volume. Preserve that volume or configure the same key explicitly when restoring application data.
+Rebuild after application source changes. Compose owns only the `backend_storage` named volume for Laravel storage, which persists across rebuilds and `docker compose down`. When `APP_KEY` is empty, the backend generates a key once and saves it in this volume. Preserve that volume or configure the same key explicitly when restoring application data.
 
-`docker compose down -v` deletes all application volumes and their data. Changing database passwords in `.env` does not update credentials already stored in an initialized MySQL volume.
+External MySQL, Redis, and S3/MinIO data are managed by their existing services. Compose does not create or delete those services or their data; Laravel startup applies its application migrations to the configured database.
 
 The AI container runs one Uvicorn worker so its provider request limiter is shared by requests in that process. Chromium is included for browser discovery and receives 512 MB of shared memory.
 
@@ -129,7 +131,7 @@ The AI container runs one Uvicorn worker so its provider request limiter is shar
 | Frontend port cannot be bound | Set an available `APP_PORT` and matching `APP_URL` in the root `.env`, then run Compose again. |
 | AI exits during startup | Inspect `docker compose logs ai`; AMD requires a valid `rc-` key when selected. |
 | Search is unavailable or returns no products | Check AI logs, provider credentials and quotas, source availability, and the selected budget. |
-| Database startup fails after changing passwords | Existing MySQL volumes retain their original credentials; updating `.env` alone does not change them. |
+| Backend cannot finish startup | Check external MySQL credentials, database existence, migration privileges, and network access from the backend container. |
 
 ## Team
 
