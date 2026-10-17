@@ -1,3 +1,4 @@
+
 type PriceRangeFilterProps = {
   minPrice: number | "";
   maxPrice: number | "";
@@ -38,23 +39,7 @@ export default function PriceRangeFilter({
     <div className="price-filter">
       <div className="price-filter__label">
         <strong>Rentang harga</strong>
-        <span>Pilih sesuai budget</span>
-      </div>
-
-      <div className="price-presets">
-        {presets.map((preset) => (
-          <button
-            type="button"
-            key={preset.label}
-            className={activePreset(preset.min, preset.max) ? "active" : ""}
-            onClick={() => {
-              onMinPriceChange(preset.min);
-              onMaxPriceChange(preset.max);
-            }}
-          >
-            {preset.label}
-          </button>
-        ))}
+        <span>Pilih sesuai budget kamu</span>
       </div>
 
       <div className="price-inputs">
@@ -65,12 +50,16 @@ export default function PriceRangeFilter({
             min="0"
             step="10000"
             value={minPrice}
-            onChange={(event) => updatePrice(event.target.value, onMinPriceChange)}
+            onChange={(event) =>
+              updatePrice(event.target.value, onMinPriceChange)
+            }
             placeholder="Minimum"
             aria-label="Harga minimum"
           />
         </label>
-        <i>–</i>
+
+        <i>—</i>
+
         <label>
           <span>Rp</span>
           <input
@@ -78,16 +67,42 @@ export default function PriceRangeFilter({
             min="0"
             step="10000"
             value={maxPrice}
-            onChange={(event) => updatePrice(event.target.value, onMaxPriceChange)}
+            onChange={(event) =>
+              updatePrice(event.target.value, onMaxPriceChange)
+            }
             placeholder="Maksimum"
             aria-label="Harga maksimum"
           />
         </label>
-        {(minPrice !== "" || maxPrice !== "") && (
-          <button type="button" className="clear-price" onClick={onClear}>Hapus</button>
-        )}
-        <button type="button" className="apply-price" onClick={onApply} disabled={isLoading}>Terapkan</button>
       </div>
+
+      <div className="price-presets">
+        {presets.map((preset) => (
+          <button
+            type="button"
+            key={preset.label}
+            className={
+              activePreset(preset.min, preset.max) ? "active" : ""
+            }
+            onClick={() => {
+              onMinPriceChange(preset.min);
+              onMaxPriceChange(preset.max);
+            }}
+          >
+            {preset.label}
+          </button>
+        ))}
+      </div>
+
+      {(minPrice !== "" || maxPrice !== "") && (
+        <button
+          type="button"
+          className="clear-price"
+          onClick={onClear}
+        >
+          Hapus filter harga
+        </button>
+      )}
     </div>
   );
 }
