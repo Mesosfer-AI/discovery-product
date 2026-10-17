@@ -4,6 +4,8 @@ RUN npm install --global pnpm@10.34.3
 COPY package.json pnpm-lock.yaml ./
 RUN pnpm install --frozen-lockfile
 COPY . .
+ARG VITE_BACKEND_URL=""
+ENV VITE_BACKEND_URL=${VITE_BACKEND_URL}
 RUN pnpm build
 
 FROM nginx:alpine

@@ -41,15 +41,17 @@ docker compose version
 
 Clone or download this repository and open a terminal at its root, where `compose.yaml` is located.
 
-### 2. Configure the AI providers
+### 2. Configure the project environment
 
-Prepare the AI environment file once. Keep an existing `ai/.env` if it already contains your configuration:
+Prepare the single shared environment file in the repository root. Keep an existing root `.env` if it already contains your configuration:
 
 ```sh
-cp ai/.env.example ai/.env
+cp .env.example .env
 ```
 
-In PowerShell, use `Copy-Item ai/.env.example ai/.env`. Edit `ai/.env` and set the following for AMD Token Factory and SerpAPI:
+In PowerShell, use `Copy-Item .env.example .env`. This one file configures the frontend, Laravel backend, AI service, and Docker Compose. Do not create environment files inside the application directories. The file is ignored by Git and excluded from application images; only public `VITE_*` values belong in the frontend bundle.
+
+For AMD Token Factory and SerpAPI, edit the root `.env`:
 
 ```dotenv
 LLM_PROVIDER=amd
@@ -58,15 +60,13 @@ AMD_API_KEY=<your AMD Token Factory key>
 SERPAPI_API_KEY=<your SerpAPI key>
 ```
 
-Replace the placeholders with your own keys. The AMD key must begin with `rc-`. Keep the model IDs and other settings from `ai/.env.example`, or choose models supported by your provider. Custom OpenAI-compatible and Ollama providers are also supported through that file's settings.
+Replace the placeholders with your own keys. The AMD key must begin with `rc-`. Keep the model IDs and other settings from the root `.env.example`, or choose models supported by your provider. Custom OpenAI-compatible and Ollama providers are also supported through this file.
 
-Containers can start without an AI environment file using the application's defaults; discovery requests require valid credentials for the selected external providers. Selecting AMD requires a valid AMD key even during startup. Compose supplies the internal Redis address automatically.
+Containers can start without provider credentials using the default custom provider; discovery requests require valid credentials for the selected external providers. Selecting AMD requires a valid AMD key even during startup.
 
-### 3. Configure the deployment environment
+### 3. Review deployment settings
 
-The root `.env` is optional for local use. For a server, copy `.env.example` to `.env`, set `APP_URL` to the server's public URL, and choose database passwords before the first startup. In PowerShell, use `Copy-Item .env.example .env`.
-
-Root `.env` controls Compose, while `ai/.env` holds AI provider configuration. Both files are ignored by Git and excluded from application images. Leave `APP_KEY` empty to generate and persist it automatically.
+For a server, set `APP_URL` to its public URL and choose database passwords before the first startup. Leave `APP_KEY` empty to generate and persist it automatically. The template's `DB_HOST`, `AI_SERVICE_URL`, and Redis addresses refer to services inside the Compose network. Leave `VITE_BACKEND_URL` empty for same-origin `/api` requests.
 
 ### 4. Build and start all services
 
@@ -111,7 +111,7 @@ docker compose up -d --build
 docker compose down
 ```
 
-After changing `ai/.env`, apply the new container environment with `docker compose up -d`. After changing application code or Dockerfiles, use `docker compose up -d --build`.
+After changing the root `.env`, apply the new environment with `docker compose up -d --build`. Rebuilding also applies public frontend build values. Use the same command after changing application code or Dockerfiles.
 
 ## Data persistence
 
@@ -134,5 +134,3 @@ The AI container runs one Uvicorn worker so its provider request limiter is shar
 ## Team
 
 **Team MESOSFER** builds and maintains this project, bringing together the shopping interface, backend integration, and AI discovery pipeline in one repository.
-
-

@@ -9,6 +9,7 @@ import uuid
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from app.main import app
+from app.config.settings import settings
 from app.schemas.product import RawProduct, UserSearchQuery, VerifiedProduct
 from app.services.dedup import deduplication_engine
 from app.services.recommender import RecommendationEngine
@@ -95,7 +96,7 @@ async def check_pipeline_logic() -> None:
         health_res = await ac.get("/api/v1/health")
         assert health_res.status_code == 200, f"Expected 200, got {health_res.status_code}"
         health_data = health_res.json()
-        assert health_data["app_name"] == "Mesosfer Agentic Discovery"
+        assert health_data["app_name"] == settings.app_name
 
     print("ALL PIPELINE & DEDUP & API CHECKS PASSED.")
 

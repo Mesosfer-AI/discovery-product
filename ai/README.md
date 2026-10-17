@@ -167,14 +167,14 @@ Content-Type: application/json
 
 ### Step 1: Clone and Configure Environment
 ```bash
-git clone https://github.com/your-org/mesosfer-ai.git
-cd mesosfer-ai
+# Start in the root of the MESOSFER repository.
 
-# Copy sample configuration
+
+# Copy the shared root configuration once
 cp .env.example .env
 ```
 
-Configure your LLM provider in `.env`:
+Configure your LLM provider in the root `.env` (shared with the frontend and backend):
 ```env
 # Choose provider: "amd", "custom", or "ollama"
 LLM_PROVIDER=amd
@@ -214,6 +214,8 @@ Every team member must sign in at notebooks.amd.com/tokenfactory and click **"Re
 - **Terms:** AMD Token Factory is for trial/development use only (no SLA). Prompts and outputs are logged for about 2 days, so do not send sensitive personal, health, or financial data.
 
 ### Step 2: Install Dependencies & Playwright (via uv)
+
+Run these commands from the `ai/` directory. The service reads the shared root `.env`.
 ```bash
 # Ultra-fast dependency resolution and venv setup
 uv sync
@@ -250,7 +252,7 @@ docker run -d \
   --name mesosfer-discovery \
   -p 47283:47283 \
   --shm-size=512m \
-  --env-file .env \
+  --env-file ../.env \
   mesosfer-discovery:latest
 ```
 
@@ -284,4 +286,3 @@ uv run pytest tests/test_provider.py -v
 
 ## 📄 License
 MIT License. Built with ❤️ for AMD Hackathon 2026.
-
