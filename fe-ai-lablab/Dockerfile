@@ -9,6 +9,7 @@ ENV VITE_BACKEND_URL=${VITE_BACKEND_URL}
 RUN pnpm build
 
 FROM nginx:alpine
+RUN apk add --no-cache 'brotli-libs>=1.2.1-r0'
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 COPY --from=build /app/dist /usr/share/nginx/html
 EXPOSE 47281
